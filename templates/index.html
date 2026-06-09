@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrometallurgical Solvent Extraction (SX) Section</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-deep:        #050a0f;
+            --bg-card:        #0d1e2e;
+            --border-dim:     rgba(0, 180, 255, 0.12);
+            --accent-cyan:    #00c8ff;
+            --accent-gold:    #f0a500;
+            --accent-green:   #00ffaa;
+            --text-primary:   #e8f4f8;
+            --text-secondary: #7ab8cc;
+            --text-dim:       #3d6878;
+            --danger:         #ff4b6e;
+            --grid-line:      rgba(0, 180, 255, 0.04);
+            --font:           'Segoe UI', system-ui, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background-color: var(--bg-deep);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed; top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 900px; height: 400px;
+            background: radial-gradient(ellipse at center top, rgba(0,160,255,0.06) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+
+        /* ── DASHBOARD LAYOUT ────────────────────────────────────── */
+        .dashboard {
+            position: relative; z-index: 1;
+            display: grid;
+            grid-template-columns: 270px 1fr 310px;
+            gap: 18px;
+            padding: 26px 18px;
+            align-items: start;
+        }
+
+        /* ── PANEL BOX ───────────────────────────────────────────── */
+        .panel-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: 14px;
+            overflow: hidden;
+            position: relative;
+        }
+        .panel-box::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.3;
+        }
+        .panel-title {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--border-dim);
+            background: rgba(0,180,255,0.03);
+        }
+        .panel-title .pdot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 7px var(--accent-cyan);
+            flex-shrink: 0;
+        }
+        .panel-title .ptitle {
+            font-size: 12px; font-weight: bold;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .panel-title .ptag {
+            margin-left: auto; font-size: 10px;
+            color: var(--text-dim); letter-spacing: 1px;
+        }
+
+        /* ── LEFT COLUMN ─────────────────────────────────────────── */
+        .col-left {
+            grid-column: 1; grid-row: 1;
+            position: sticky; top: 26px;
+        }
+        .history-scroll {
+            padding: 10px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+        }
+        .history-scroll::-webkit-scrollbar { width: 3px; }
+        .history-scroll::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 3px; }
+
+        .hist-empty {
+            padding: 28px 14px; text-align: center;
+            color: var(--text-dim); font-size: 12px;
+            font-style: italic; line-height: 1.8;
+        }
+
+        .hist-card {
+            background: rgba(0,0,0,0.22);
+            border: 1px solid var(--border-dim);
+            border-radius: 10px; padding: 11px 13px;
+            margin-bottom: 9px;
+            animation: fadeUp 0.4s ease both;
+            transition: transform 0.22s ease, box-shadow 0.22s ease,
+                        border-color 0.2s ease, background 0.2s ease;
+        }
+        .hist-card:hover {
+            transform: translateY(-3px) scale(1.012);
+            box-shadow: 0 8px 22px rgba(0,0,0,0.35),
+                        0 0 0 1px rgba(0,200,255,0.22);
+            border-color: rgba(0,200,255,0.35);
+            background: rgba(0,180,255,0.05);
+            cursor: pointer;
+        }
+        .hist-card-top {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px;
+        }
+        .hist-run { font-size: 11px; font-weight: bold; letter-spacing: 1px; color: var(--accent-cyan); text-transform: uppercase; }
+        .hist-time { font-size: 10px; color: var(--text-dim); }
+        .hist-value { font-size: 17px; font-weight: bold; color: var(--accent-green); margin-bottom: 7px; }
+        .hist-value.err { color: var(--danger); font-size: 12px; }
+        .hist-mode-badge {
+            display: inline-block; font-size: 9px; font-weight: bold;
+            letter-spacing: 1px; text-transform: uppercase;
+            padding: 2px 7px; border-radius: 3px; margin-bottom: 7px;
+        }
+        .hist-mode-badge.full    { background: rgba(0,200,255,0.1); color: var(--accent-cyan); border: 1px solid rgba(0,200,255,0.2); }
+        .hist-mode-badge.organic { background: rgba(240,165,0,0.1); color: var(--accent-gold); border: 1px solid rgba(240,165,0,0.25); }
+        .hist-params { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+        .hist-p { font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-p b { color: var(--text-secondary); font-weight: normal; }
+
+        /* ── CENTER COLUMN ───────────────────────────────────────── */
+        .col-center { grid-column: 2; grid-row: 1; }
+
+        /* PAGE HEADER */
+        .page-header {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 22px; padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-dim);
+            animation: fadeDown 0.6s ease both;
+        }
+        .hdr-icon {
+            width: 44px; height: 44px;
+            border: 1.5px solid var(--accent-cyan); border-radius: 10px;
+            display: grid; place-items: center; position: relative; flex-shrink: 0;
+        }
+        .hdr-icon::before {
+            content: ''; position: absolute; inset: 3px;
+            background: rgba(0,200,255,0.08); border-radius: 6px;
+        }
+        .hdr-icon svg { position: relative; z-index: 1; }
+        .hdr-text { flex: 1; }
+        .hdr-text .sys-lbl {
+            font-size: 10px; letter-spacing: 3px;
+            color: var(--accent-cyan); text-transform: uppercase; opacity: 0.7;
+        }
+        .hdr-text h1 {
+            font-size: 22px; font-weight: bold; letter-spacing: 0.5px;
+            color: var(--text-primary); line-height: 1.2;
+        }
+        .hdr-text h1 span { color: var(--accent-cyan); }
+        .status-badge {
+            font-size: 10px; letter-spacing: 2px; color: var(--accent-green);
+            background: rgba(0,255,170,0.07);
+            border: 1px solid rgba(0,255,170,0.2);
+            border-radius: 4px; padding: 5px 10px;
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .status-badge::before {
+            content: ''; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .warn-badge {
+            font-size: 10px; letter-spacing: 1.5px; color: var(--accent-gold);
+            background: rgba(240,165,0,0.07);
+            border: 1px solid rgba(240,165,0,0.25);
+            border-radius: 4px; padding: 5px 10px;
+            white-space: nowrap;
+        }
+
+        /* MAIN FORM WRAPPER */
+        .wrapper {
+            position: relative; background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: 14px; overflow: hidden;
+            animation: fadeUp 0.7s ease both 0.1s;
+        }
+        .wrapper::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.4; z-index: 2;
+        }
+
+        #cursor-glow {
+            position: absolute; width: 220px; height: 220px; border-radius: 50%;
+            pointer-events: none; transform: translate(-50%, -50%);
+            background: radial-gradient(circle,
+                rgba(255,182,210,0.20) 0%,
+                rgba(255,182,210,0.07) 40%,
+                transparent 70%);
+            opacity: 0; transition: opacity 0.15s ease; z-index: 1;
+        }
+
+        .ctlx, .cbrx { position: absolute; width: 14px; height: 14px; pointer-events: none; z-index: 3; }
+        .ctlx { top:-1px; left:-1px; border-top:2px solid var(--accent-cyan); border-left:2px solid var(--accent-cyan); border-radius:3px 0 0 0; }
+        .cbrx { bottom:-1px; right:-1px; border-bottom:2px solid var(--accent-cyan); border-right:2px solid var(--accent-cyan); border-radius:0 0 3px 0; }
+
+        .module-group {
+            position: relative; z-index: 2;
+            transition: background 0.25s ease, box-shadow 0.25s ease;
+        }
+        .module-group:hover {
+            background: rgba(0,180,255,0.04);
+            box-shadow: inset 4px 0 0 rgba(0,200,255,0.35),
+                        inset 0 0 0 1px rgba(0,200,255,0.10);
+        }
+        .module-group:hover .sec-hdr { background: rgba(0,180,255,0.07); }
+
+        .sec-hdr {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 20px;
+            background: rgba(0,180,255,0.03);
+            border-bottom: 1px solid var(--border-dim);
+            transition: background 0.25s ease;
+        }
+        .sec-hdr .sdot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--accent-cyan); box-shadow: 0 0 7px var(--accent-cyan);
+        }
+        .sec-hdr .slabel {
+            font-size: 11px; font-weight: bold;
+            letter-spacing: 2px; color: var(--text-secondary); text-transform: uppercase;
+        }
+        .sec-hdr .stag {
+            margin-left: auto; font-size: 9px; color: var(--text-dim); letter-spacing: 1px;
+        }
+
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0; position: relative;
+        }
+        .form-group {
+            display: flex; flex-direction: column; gap: 6px;
+            padding: 13px 20px;
+            border-bottom: 1px solid var(--border-dim);
+            border-right: 1px solid var(--border-dim);
+            transition: background 0.2s ease;
+        }
+        .form-group:nth-child(even) { border-right: none; }
+        .form-group:hover { background: rgba(0,180,255,0.025); }
+        .form-group:last-child:nth-child(odd) { border-right: none; grid-column: span 2; }
+
+        label {
+            font-size: 11px; font-weight: bold;
+            letter-spacing: 1px; text-transform: uppercase;
+            color: var(--text-secondary);
+            display: flex; align-items: center; gap: 6px;
+        }
+        label::before {
+            content: ''; width: 3px; height: 10px;
+            background: var(--accent-cyan); border-radius: 2px;
+            opacity: 0.45; flex-shrink: 0;
+        }
+
+        input[type="number"] {
+            padding: 9px 12px; border-radius: 7px;
+            border: 1px solid var(--border-dim);
+            background: rgba(0,0,0,0.28);
+            color: var(--text-primary);
+            font-family: var(--font); font-size: 14px;
+            outline: none; transition: all 0.2s;
+            -moz-appearance: textfield; width: 100%;
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        input[type="number"]:focus {
+            border-color: var(--accent-cyan);
+            background: rgba(0,180,255,0.05);
+            box-shadow: 0 0 0 3px rgba(0,180,255,0.08);
+        }
+        input[type="number"]::placeholder { color: var(--text-dim); }
+
+        /* ── OPT MODE SELECTOR ───────────────────────────────────── */
+        .opt-mode-group {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-dim);
+            background: rgba(0,180,255,0.02);
+        }
+        .opt-mode-label {
+            font-size: 11px; font-weight: bold; letter-spacing: 1px;
+            text-transform: uppercase; color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .opt-mode-label::before {
+            content: ''; width: 3px; height: 10px;
+            background: var(--accent-gold); border-radius: 2px;
+            opacity: 0.7; flex-shrink: 0;
+        }
+        .radio-row {
+            display: flex; gap: 12px; flex-wrap: wrap;
+        }
+        .radio-card {
+            flex: 1; min-width: 220px;
+            position: relative; cursor: pointer;
+        }
+        .radio-card input[type="radio"] {
+            position: absolute; opacity: 0; width: 0; height: 0;
+        }
+        .radio-inner {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 11px 14px; border-radius: 9px;
+            border: 1.5px solid var(--border-dim);
+            background: rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+        .radio-card input[type="radio"]:checked + .radio-inner {
+            border-color: var(--accent-gold);
+            background: rgba(240,165,0,0.07);
+            box-shadow: 0 0 0 1px rgba(240,165,0,0.15);
+        }
+        .radio-card:hover .radio-inner {
+            border-color: rgba(240,165,0,0.4);
+            background: rgba(240,165,0,0.04);
+        }
+        .radio-dot {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid var(--text-dim);
+            flex-shrink: 0; margin-top: 1px;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.2s;
+        }
+        .radio-card input[type="radio"]:checked + .radio-inner .radio-dot {
+            border-color: var(--accent-gold);
+        }
+        .radio-card input[type="radio"]:checked + .radio-inner .radio-dot::after {
+            content: ''; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent-gold);
+            box-shadow: 0 0 5px var(--accent-gold);
+        }
+        .radio-text { flex: 1; }
+        .radio-title {
+            font-size: 12px; font-weight: bold; color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+        .radio-desc {
+            font-size: 10px; color: var(--text-dim); line-height: 1.5;
+        }
+
+        /* ── COPPER PRICE INPUT ─────────────────────────────── */
+        .price-group {
+            display: flex; flex-direction: column; gap: 6px;
+            padding: 13px 20px;
+            border-bottom: 1px solid var(--border-dim);
+            background: rgba(240,165,0,0.02);
+            transition: background 0.2s ease;
+        }
+        .price-group:hover { background: rgba(240,165,0,0.04); }
+        .price-input-wrap {
+            position: relative;
+        }
+        .price-input-wrap input[type="number"] {
+            padding-left: 28px;
+        }
+        .price-prefix {
+            position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+            font-size: 14px; font-weight: bold; color: var(--accent-gold);
+            pointer-events: none; z-index: 1;
+        }
+        .price-hint {
+            font-size: 10px; color: var(--text-dim);
+        }
+
+        .submit-zone {
+            padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+            background: rgba(0,0,0,0.2); position: relative; z-index: 2;
+        }
+        .info-txt {
+            flex: 1; font-size: 11px; color: var(--text-dim); line-height: 1.6;
+        }
+        .info-txt strong { color: var(--accent-gold); font-weight: bold; }
+
+        button[type="submit"] {
+            position: relative; padding: 12px 30px; border: none; border-radius: 8px;
+            background: linear-gradient(135deg, #0072c6, #00a8e8, #00c8ff);
+            color: #fff; font-family: var(--font); font-size: 14px;
+            font-weight: bold; letter-spacing: 2px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.25s;
+            white-space: nowrap; overflow: hidden; flex-shrink: 0;
+        }
+        button[type="submit"]::before {
+            content: ''; position: absolute; top: 0; left: -100%;
+            width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: left 0.5s ease;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,180,255,0.35), 0 0 0 1px rgba(0,200,255,0.3);
+        }
+        button[type="submit"]:hover::before { left: 150%; }
+        button[type="submit"]:active { transform: translateY(0); }
+        button[type="submit"]:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        #spinner {
+            display: none; text-align: center;
+            padding: 14px 20px; background: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--border-dim);
+            color: var(--text-dim); font-size: 12px; letter-spacing: 1px;
+        }
+        .spinner-ring {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid var(--border-dim);
+            border-top-color: var(--accent-cyan); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── RESULTS ─────────────────────────────────────────────── */
+        .results-section {
+            margin-top: 18px; animation: fadeUp 0.5s ease both;
+        }
+
+        .feat-bar {
+            background: rgba(0,180,255,0.04);
+            border: 1px solid var(--border-dim);
+            border-radius: 10px; padding: 12px 16px;
+            margin-bottom: 14px;
+            display: flex; flex-wrap: wrap; gap: 10px 22px;
+        }
+        .feat-item {
+            font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px;
+        }
+        .feat-item strong { color: var(--text-secondary); }
+
+        /* Mode indicator banner */
+        .mode-banner {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px; border-radius: 8px;
+            margin-bottom: 14px; font-size: 12px;
+        }
+        .mode-banner.full {
+            background: rgba(0,200,255,0.06);
+            border: 1px solid rgba(0,200,255,0.2);
+            color: var(--accent-cyan);
+        }
+        .mode-banner.organic_only {
+            background: rgba(240,165,0,0.06);
+            border: 1px solid rgba(240,165,0,0.22);
+            color: var(--accent-gold);
+        }
+        .mode-banner .mbdot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: currentColor; box-shadow: 0 0 6px currentColor; flex-shrink: 0;
+        }
+
+        .results-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+        }
+
+        /* Full-width panel when needed */
+        .results-grid-full {
+            display: grid; grid-template-columns: 1fr; gap: 14px;
+            margin-top: 14px;
+        }
+
+        .res-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px; overflow: hidden;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        }
+        .res-panel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,200,255,0.20);
+            border-color: rgba(0,200,255,0.28);
+        }
+        .res-panel::before {
+            content: ''; display: block; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.3;
+        }
+        .res-panel.gold-accent::before {
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+        }
+        .res-panel-title {
+            display: flex; align-items: center; gap: 9px;
+            padding: 12px 16px; border-bottom: 1px solid var(--border-dim);
+            background: rgba(0,180,255,0.03);
+        }
+        .res-panel.gold-accent .res-panel-title { background: rgba(240,165,0,0.03); }
+        .res-panel-title .rdot {
+            width: 7px; height: 7px; border-radius: 50%;
+            box-shadow: 0 0 7px currentColor; flex-shrink: 0;
+        }
+        .res-panel-title .rtitle {
+            font-size: 11px; font-weight: bold;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .metric-table {
+            width: 100%; border-collapse: collapse; font-size: 12px;
+        }
+        .metric-table th, .metric-table td {
+            padding: 9px 16px; text-align: left;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .metric-table thead th {
+            font-size: 10px; font-weight: bold;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            color: var(--text-dim); background: rgba(0,0,0,0.1);
+        }
+        .metric-table tbody tr:last-child td { border-bottom: none; }
+        .metric-table tbody tr:hover td { background: rgba(0,180,255,0.025); }
+        .metric-table td:last-child { text-align: right; }
+        .metric-val { color: #60c8ff; font-weight: 600; font-size: 13px; }
+        .metric-val.highlight { color: var(--accent-green) !important; }
+        .metric-val.gold { color: var(--accent-gold) !important; }
+        .metric-val.danger { color: var(--danger) !important; }
+        .metric-name { color: var(--text-secondary); }
+
+        .opt-highlight {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+            padding: 12px 16px; border-bottom: 1px solid var(--border-dim);
+            background: rgba(0,0,0,0.1);
+        }
+        .opt-highlight.two-col { grid-template-columns: repeat(2, 1fr); }
+        .opt-stat {
+            background: rgba(0,180,255,0.04);
+            border: 1px solid var(--border-dim);
+            border-radius: 8px; padding: 10px 12px; text-align: center;
+        }
+        .opt-stat .olabel {
+            font-size: 9px; font-weight: bold; letter-spacing: 1.5px;
+            text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;
+        }
+        .opt-stat .ovalue {
+            font-size: 16px; font-weight: bold; color: var(--accent-green);
+            line-height: 1.2;
+        }
+        .opt-stat--oa {
+            border-color: rgba(240,165,0,0.22);
+            background: rgba(240,165,0,0.05);
+            box-shadow: 0 0 0 1px rgba(240,165,0,0.10) inset;
+        }
+        .opt-stat--oa .olabel { color: rgba(240,165,0,0.65); }
+        .ovalue--oa { color: var(--accent-gold) !important; }
+
+        /* Revenue highlight row */
+        .revenue-highlight {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+            padding: 14px 16px; background: rgba(0,0,0,0.15);
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .rev-stat {
+            text-align: center; padding: 10px 8px; border-radius: 9px;
+            border: 1px solid var(--border-dim); background: rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+        .rev-stat:hover { transform: translateY(-2px); }
+        .rev-stat .rlabel {
+            font-size: 9px; font-weight: bold; letter-spacing: 1.5px;
+            text-transform: uppercase; margin-bottom: 4px;
+        }
+        .rev-stat .rvalue {
+            font-size: 15px; font-weight: bold; line-height: 1.2;
+        }
+        .rev-stat.current  { border-color: rgba(0,200,255,0.2); }
+        .rev-stat.current .rlabel  { color: rgba(0,200,255,0.6); }
+        .rev-stat.current .rvalue  { color: var(--accent-cyan); }
+        .rev-stat.optimised { border-color: rgba(0,255,170,0.2); }
+        .rev-stat.optimised .rlabel { color: rgba(0,255,170,0.6); }
+        .rev-stat.optimised .rvalue { color: var(--accent-green); }
+        .rev-stat.change { border-color: rgba(240,165,0,0.2); background: rgba(240,165,0,0.04); }
+        .rev-stat.change .rlabel { color: rgba(240,165,0,0.6); }
+        .rev-stat.change .rvalue  { color: var(--accent-gold); }
+        .rev-stat.change.negative { border-color: rgba(255,75,110,0.2); background: rgba(255,75,110,0.04); }
+        .rev-stat.change.negative .rlabel { color: rgba(255,75,110,0.6); }
+        .rev-stat.change.negative .rvalue { color: var(--danger); }
+
+        .diff {
+            font-size: 11px; font-weight: bold;
+            padding: 2px 6px; border-radius: 4px;
+        }
+        .diff.up   { background: rgba(0,255,170,0.1); color: var(--accent-green); }
+        .diff.down { background: rgba(255,75,110,0.1); color: var(--danger); }
+        .diff.neutral { background: rgba(61,104,120,0.2); color: var(--text-dim); }
+
+        .alert-error {
+            background: rgba(255,75,110,0.08);
+            border: 1px solid rgba(255,75,110,0.3);
+            border-radius: 10px; color: #ff8fa3;
+            padding: 12px 16px; margin-bottom: 16px; font-size: 13px;
+        }
+        .alert-error strong { color: var(--danger); }
+
+        /* fixed-flow pill */
+        .fixed-pill {
+            display: inline-block; font-size: 9px; font-weight: bold;
+            letter-spacing: 1px; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 3px;
+            background: rgba(61,104,120,0.25); color: var(--text-dim);
+            border: 1px solid rgba(61,104,120,0.35); margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* ── RIGHT COLUMN ────────────────────────────────────────── */
+        .col-right {
+            grid-column: 3; grid-row: 1;
+            display: flex; flex-direction: column; gap: 18px;
+            position: sticky; top: 26px;
+        }
+        .col-right .panel-box {
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        }
+        .col-right .panel-box:hover {
+            transform: translateY(-3px) scale(1.012);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,200,255,0.20);
+            border-color: rgba(0,200,255,0.28);
+        }
+
+        .chart-body { padding: 14px; }
+        .chart-wrap { position: relative; height: 230px; }
+        .chart-ph {
+            height: 230px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 8px;
+            color: var(--text-dim); font-size: 11px; font-style: italic; text-align: center;
+        }
+        .chart-ph svg { opacity: 0.25; }
+
+        /* ── OPTIMAL LEACH SECTIONS ──────────────────────────────── */
+        .leach-ph {
+            padding: 30px 18px; text-align: center;
+            color: var(--text-dim); font-size: 11px;
+            font-style: italic; line-height: 1.9;
+        }
+        .leach-ph svg { opacity: 0.2; margin-bottom: 6px; }
+
+        .leach-kpi-row {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0; border-bottom: 1px solid var(--border-dim);
+        }
+        .leach-kpi-cell {
+            padding: 18px 16px; position: relative;
+            display: flex; flex-direction: column; gap: 6px;
+            transition: background 0.2s;
+        }
+        .leach-kpi-cell:first-child { border-right: 1px solid var(--border-dim); }
+        .leach-kpi-cell:hover { background: rgba(0,180,255,0.03); }
+        .leach-kpi-cell::after {
+            content: attr(data-sec);
+            position: absolute; right: 10px; top: 8px;
+            font-size: 38px; font-weight: 900;
+            color: rgba(0,200,255,0.04);
+            letter-spacing: -2px; pointer-events: none; line-height: 1;
+        }
+        .lkpi-label {
+            font-size: 9px; font-weight: bold; letter-spacing: 2px;
+            text-transform: uppercase; color: var(--text-dim);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .lkpi-label::before {
+            content: ''; display: inline-block;
+            width: 5px; height: 5px; border-radius: 50%;
+            background: var(--accent-cyan); box-shadow: 0 0 5px var(--accent-cyan);
+        }
+        .lkpi-value {
+            font-size: 22px; font-weight: 800; color: var(--accent-green);
+            letter-spacing: -0.5px; line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .lkpi-unit { font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; }
+
+        .leach-split-section {
+            padding: 14px 16px; border-bottom: 1px solid var(--border-dim);
+        }
+        .split-label-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .split-lbl { font-size: 9px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); }
+        .split-pct { font-size: 10px; font-weight: bold; color: var(--accent-cyan); }
+        .split-track {
+            height: 8px; border-radius: 4px;
+            background: rgba(0,180,255,0.08); overflow: hidden; position: relative; margin-bottom: 10px;
+        }
+        .split-fill {
+            height: 100%; border-radius: 4px;
+            transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .split-fill.s1 { background: linear-gradient(90deg, #00c8ff, #00ffaa); box-shadow: 0 0 10px rgba(0,200,255,0.4); }
+        .split-fill.s2 { background: linear-gradient(90deg, #f0a500, #ffcc55); box-shadow: 0 0 10px rgba(240,165,0,0.4); }
+
+        .leach-compare { width: 100%; border-collapse: collapse; }
+        .leach-compare thead th {
+            font-size: 9px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase;
+            color: var(--text-dim); padding: 9px 14px; text-align: left;
+            background: rgba(0,0,0,0.12); border-bottom: 1px solid var(--border-dim);
+        }
+        .leach-compare thead th:last-child { text-align: right; }
+        .leach-compare tbody td { padding: 9px 14px; font-size: 11px; border-bottom: 1px solid rgba(0,180,255,0.05); }
+        .leach-compare tbody tr:last-child td { border-bottom: none; }
+        .leach-compare tbody tr:hover td { background: rgba(0,180,255,0.02); }
+        .lc-name { color: var(--text-secondary); }
+        .lc-orig { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+        .lc-opt  { color: var(--accent-green); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+        .lc-delta { font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 3px; text-align: right; }
+        .lc-delta.up   { background: rgba(0,255,170,0.09); color: var(--accent-green); }
+        .lc-delta.down { background: rgba(255,75,110,0.09); color: var(--danger); }
+        .lc-delta.flat { background: rgba(61,104,120,0.15); color: var(--text-dim); }
+
+        .leach-footer {
+            padding: 10px 14px; background: rgba(0,0,0,0.12);
+            border-top: 1px solid var(--border-dim);
+            font-size: 10px; color: var(--text-dim); line-height: 1.6;
+        }
+        .leach-footer strong { color: var(--text-secondary); }
+
+        /* ── ANIMATIONS ──────────────────────────────────────────── */
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(14px);  } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse    { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+        /* ── RESPONSIVE ──────────────────────────────────────────── */
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: 220px 1fr 280px; }
+        }
+        @media (max-width: 880px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .col-left, .col-center, .col-right { grid-column: 1; position: static; }
+            .col-left { order: 3; }
+            .col-right { order: 2; flex-direction: row; flex-wrap: wrap; }
+            .col-right > * { flex: 1 1 260px; }
+            .history-scroll { max-height: 260px; }
+            .results-grid { grid-template-columns: 1fr; }
+            .opt-highlight { grid-template-columns: 1fr 1fr; }
+            .revenue-highlight { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 520px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .form-group { border-right: none !important; grid-column: span 1 !important; }
+            .page-header { flex-wrap: wrap; }
+            .submit-zone { flex-direction: column; align-items: stretch; }
+            button[type="submit"] { width: 100%; }
+            .opt-highlight { grid-template-columns: 1fr; }
+            .radio-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- ── LEFT — Previously Checked ──────────────────────────── -->
+    <div class="col-left">
+        <div class="panel-box">
+            <div class="panel-title">
+                <div class="pdot" style="background:#a78bfa;box-shadow:0 0 7px #a78bfa;"></div>
+                <span class="ptitle">Previously Checked</span>
+                <span class="ptag" id="run-count">0 RUNS</span>
+            </div>
+            <div class="history-scroll" id="history-body">
+                <div class="hist-empty" id="hist-empty">
+                    No predictions yet.<br>Fill in the form and click<br>
+                    <em>"Run Prediction"</em> to begin.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── CENTER — Form + Results ────────────────────────────── -->
+    <div class="col-center">
+
+        <div class="page-header">
+            <div class="hdr-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="1.5">
+                    <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+                </svg>
+            </div>
+            <div class="hdr-text">
+                <div class="sys-lbl">Process Prediction System</div>
+                <h1>Hydrometallurgical <span>Solvent Extraction</span> (SX) Section</h1>
+            </div>
+            {% if not skopt_available %}
+            <div class="warn-badge">⚠ GRID SEARCH MODE</div>
+            {% else %}
+            <div class="status-badge">SYSTEM ONLINE</div>
+            {% endif %}
+        </div>
+
+        {% if error %}
+        <div class="alert-error">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if not skopt_available %}
+        <div class="alert-error" style="background:rgba(240,165,0,0.06);border-color:rgba(240,165,0,0.25);color:#f0c060;margin-bottom:14px;">
+            <strong>Note:</strong> <code>scikit-optimize</code> is not installed — using grid-search fallback.
+            Install with <code>pip install scikit-optimize</code> to enable full Bayesian optimisation.
+        </div>
+        {% endif %}
+
+        <div class="wrapper" id="form-wrapper">
+            <div class="ctlx"></div>
+            <div class="cbrx"></div>
+            <div id="cursor-glow"></div>
+
+            <form id="predForm" method="POST" action="/predict" onsubmit="showSpinner()">
+
+                <!-- MODULE A — Leach Solution -->
+                <div class="module-group">
+                    <div class="sec-hdr">
+                        <div class="sdot"></div>
+                        <span class="slabel">Leach Solution</span>
+                        <span class="stag">MODULE A</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Leach Solution Sec-1</label>
+                            <input type="number" step="any" name="leach_solution_sec1"
+                                   value="{{ raw_input['leach_solution_sec1'] if raw_input else '' }}"
+                                   placeholder="e.g. 30028.32" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Leach Solution Sec-2</label>
+                            <input type="number" step="any" name="leach_solution_sec2"
+                                   value="{{ raw_input['leach_solution_sec2'] if raw_input else '' }}"
+                                   placeholder="e.g. 30079.88" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Leach Acidity</label>
+                            <input type="number" step="any" name="leach_acidity"
+                                   value="{{ raw_input['leach_acidity'] if raw_input else '' }}"
+                                   placeholder="e.g. 0" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Leach pH</label>
+                            <input type="number" step="any" name="leach_ph"
+                                   value="{{ raw_input['leach_ph'] if raw_input else '' }}"
+                                   placeholder="e.g. 1.427" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Leach Fe</label>
+                            <input type="number" step="any" name="leach_fe"
+                                   value="{{ raw_input['leach_fe'] if raw_input else '' }}"
+                                   placeholder="e.g. 34.805" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Leach Cu</label>
+                            <input type="number" step="any" name="leach_cu"
+                                   value="{{ raw_input['leach_cu'] if raw_input else '' }}"
+                                   placeholder="e.g. 0.702" required />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE B — Lean Phase -->
+                <div class="module-group">
+                    <div class="sec-hdr">
+                        <div class="sdot" style="background:var(--accent-gold);box-shadow:0 0 7px var(--accent-gold);"></div>
+                        <span class="slabel">Lean Phase</span>
+                        <span class="stag">MODULE B</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Lean Cu Conc</label>
+                            <input type="number" step="any" name="lean_cu_conc"
+                                   value="{{ raw_input['lean_cu_conc'] if raw_input else '' }}"
+                                   placeholder="e.g. 34.208" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Lean Fe Conc</label>
+                            <input type="number" step="any" name="lean_fe_conc"
+                                   value="{{ raw_input['lean_fe_conc'] if raw_input else '' }}"
+                                   placeholder="e.g. 8.03" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Lean H&#x2082;SO&#x2084;</label>
+                            <input type="number" step="any" name="lean_h2so4"
+                                   value="{{ raw_input['lean_h2so4'] if raw_input else '' }}"
+                                   placeholder="e.g. 180.5" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Lean Flow</label>
+                            <input type="number" step="any" name="lean_flow"
+                                   value="{{ raw_input['lean_flow'] if raw_input else '' }}"
+                                   placeholder="e.g. 3048.45" required />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE C — Flow Parameters -->
+                <div class="module-group">
+                    <div class="sec-hdr">
+                        <div class="sdot" style="background:#a78bfa;box-shadow:0 0 7px #a78bfa;"></div>
+                        <span class="slabel">Flow Parameters</span>
+                        <span class="stag">MODULE C</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Aqueous Flow</label>
+                            <input type="number" step="any" name="aqueous_flow"
+                                   value="{{ raw_input['aqueous_flow'] if raw_input else '' }}"
+                                   placeholder="e.g. 60108.2" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Organic Flow</label>
+                            <input type="number" step="any" name="organic_flow"
+                                   value="{{ raw_input['organic_flow'] if raw_input else '' }}"
+                                   placeholder="e.g. 33087.87" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Solvent-to-Leach Flow Ratio</label>
+                            <input type="number" step="any" name="solvent_to_leach_flow_ratio"
+                                   value="{{ raw_input['solvent_to_leach_flow_ratio'] if raw_input else '' }}"
+                                   placeholder="e.g. 1.1" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Phase Engagement Time</label>
+                            <input type="number" step="any" name="phase_engagement_time"
+                                   value="{{ raw_input['phase_engagement_time'] if raw_input else '10' }}"
+                                   placeholder="e.g. 10" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE D — Optimisation Settings (NEW) -->
+                <div class="module-group">
+                    <div class="sec-hdr">
+                        <div class="sdot" style="background:var(--accent-gold);box-shadow:0 0 7px var(--accent-gold);"></div>
+                        <span class="slabel">Optimisation Settings</span>
+                        <span class="stag">MODULE D</span>
+                    </div>
+
+                    <!-- Copper Price -->
+                    <div class="price-group">
+                        <label style="color:var(--accent-gold);">Copper Price per Ton</label>
+                        <div class="price-input-wrap">
+                            <span class="price-prefix">$</span>
+                            <input type="number" step="any" name="copper_price"
+                                   value="{{ raw_input['copper_price'] if raw_input else '' }}"
+                                   placeholder="e.g. 13000" required />
+                        </div>
+                        <div class="price-hint">Enter the current market price in USD per metric ton</div>
+                    </div>
+
+                    <!-- Optimisation Mode -->
+                    <div class="opt-mode-group">
+                        <div class="opt-mode-label">Optimisation Mode</div>
+                        <div class="radio-row">
+                            <label class="radio-card">
+                                <input type="radio" name="opt_mode" value="full"
+                                       {% if not raw_input or raw_input.get('opt_mode','full') == 'full' %}checked{% endif %} />
+                                <div class="radio-inner">
+                                    <div class="radio-dot"></div>
+                                    <div class="radio-text">
+                                        <div class="radio-title">Optimise Aqueous + Organic Flow</div>
+                                        <div class="radio-desc">Input copper changes with aqueous flow. Full Bayesian search (50 trials).</div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="opt_mode" value="organic_only"
+                                       {% if raw_input and raw_input.get('opt_mode') == 'organic_only' %}checked{% endif %} />
+                                <div class="radio-inner">
+                                    <div class="radio-dot"></div>
+                                    <div class="radio-text">
+                                        <div class="radio-title">Optimise Organic Flow Only</div>
+                                        <div class="radio-desc">Aqueous flow is fixed — input copper stays constant. Only organic flow is tuned (50 trials).</div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="submit-zone">
+                    <div class="info-txt">
+                        <strong>14 process parameters</strong> &nbsp;·&nbsp; Copper price &amp; mode required
+                        &nbsp;·&nbsp;
+                        {% if skopt_available %}
+                        Bayesian optimisation active
+                        {% else %}
+                        Grid-search fallback (install scikit-optimize for Bayesian)
+                        {% endif %}
+                    </div>
+                    <button type="submit">&#9654; Run Prediction</button>
+                </div>
+
+            </form>
+
+            <div id="spinner">
+                <div class="spinner-ring"></div>
+                {% if skopt_available %}
+                Running Bayesian optimisation — please wait…
+                {% else %}
+                Running grid-search optimisation — please wait…
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ── RESULTS ─────────────────────────────────────────── -->
+        {% if show_results %}
+        <div class="results-section">
+
+            <!-- Mode banner -->
+            <div class="mode-banner {{ opt_results.mode }}">
+                <div class="mbdot"></div>
+                {% if opt_results.mode == 'full' %}
+                <strong>Full Optimisation Mode</strong> &nbsp;—&nbsp; Aqueous &amp; Organic flow both optimised · Input copper varies
+                {% else %}
+                <strong>Organic-Only Mode</strong> &nbsp;—&nbsp; Aqueous flow fixed · Input copper constant · Only organic flow optimised
+                {% endif %}
+            </div>
+
+            <div class="feat-bar">
+                <span class="feat-item">&#9658; <strong>input_copper</strong> = leach_cu × aq_flow × 24 × 60 / 10⁶</span>
+                <span class="feat-item">&#9658; <strong>cu_fe_ratio</strong> = leach_cu / (leach_fe + ε)</span>
+                <span class="feat-item">&#9658; <strong>extraction_%</strong> = output_copper / input_copper × 100</span>
+                <span class="feat-item">&#9658; <strong>revenue</strong> = output_copper × ${{ opt_results.copper_price }}</span>
+            </div>
+
+            <!-- Row 1: Initial vs Optimised flow/copper/extraction -->
+            <div class="results-grid">
+
+                <!-- Initial Predictions -->
+                <div class="res-panel">
+                    <div class="res-panel-title">
+                        <div class="rdot" style="color:var(--accent-cyan);background:var(--accent-cyan);"></div>
+                        <span class="rtitle">Baseline (Current)</span>
+                    </div>
+                    <table class="metric-table">
+                        <thead>
+                            <tr><th>Parameter</th><th>Value</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="metric-name">Aqueous Flow</td>
+                                <td><span class="metric-val">{{ opt_results.current_aqueous_flow }}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Organic Flow</td>
+                                <td><span class="metric-val">{{ opt_results.current_organic_flow }}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Input Copper</td>
+                                <td><span class="metric-val">{{ initial_preds.input_copper }}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Output Copper</td>
+                                <td><span class="metric-val">{{ initial_preds.output_copper }}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Extraction %</td>
+                                <td><span class="metric-val highlight">{{ initial_preds.extraction_percentage }}%</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Copper Loss</td>
+                                <td><span class="metric-val danger">{{ initial_preds.copper_loss }}</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Optimised Results -->
+                <div class="res-panel">
+                    <div class="res-panel-title">
+                        <div class="rdot" style="color:var(--accent-green);background:var(--accent-green);"></div>
+                        <span class="rtitle">Optimised Results</span>
+                    </div>
+
+                    <!-- Key stat pills -->
+                    <div class="opt-highlight {% if opt_results.mode == 'organic_only' %}two-col{% endif %}">
+                        {% if opt_results.mode == 'full' %}
+                        <div class="opt-stat">
+                            <div class="olabel">Opt. Aqueous Flow</div>
+                            <div class="ovalue">{{ opt_results.best_aqueous_flow }}</div>
+                        </div>
+                        {% else %}
+                        <div class="opt-stat" style="border-color:rgba(61,104,120,0.35);background:rgba(61,104,120,0.07);">
+                            <div class="olabel" style="color:var(--text-dim);">Aqueous Flow <span class="fixed-pill">FIXED</span></div>
+                            <div class="ovalue" style="color:var(--text-secondary);">{{ opt_results.best_aqueous_flow }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="opt-stat">
+                            <div class="olabel">Opt. Organic Flow</div>
+                            <div class="ovalue">{{ opt_results.best_organic_flow }}</div>
+                        </div>
+                        <div class="opt-stat">
+                            <div class="olabel">Max Extraction</div>
+                            <div class="ovalue">{{ opt_results.opt_extraction_pct }}%</div>
+                        </div>
+                        {% if opt_results.mode == 'full' %}
+                        <div class="opt-stat opt-stat--oa">
+                            <div class="olabel">Optimal O/A Ratio</div>
+                            {% set orig_sec1 = raw_input['leach_solution_sec1'] | float %}
+                            {% set orig_sec2 = raw_input['leach_solution_sec2'] | float %}
+                            {% set total_sec = orig_sec1 + orig_sec2 %}
+                            {% set ratio_sec2 = (orig_sec2 / total_sec) if total_sec > 0 else 0.5 %}
+                            {% set opt_sec2_val = opt_results.best_aqueous_flow * ratio_sec2 %}
+                            {% if opt_sec2_val > 0 %}
+                                <div class="ovalue ovalue--oa">{{ "%.4f" | format(opt_results.best_organic_flow / opt_sec2_val) }}</div>
+                            {% else %}
+                                <div class="ovalue ovalue--oa">—</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Comparison table -->
+                    <table class="metric-table">
+                        <thead>
+                            <tr><th>Parameter</th><th>Optimised</th><th>&#916; vs Baseline</th></tr>
+                        </thead>
+                        <tbody>
+                            {% set rows = [
+                                ('Aqueous Flow',    opt_results.current_aqueous_flow, opt_results.best_aqueous_flow),
+                                ('Organic Flow',    opt_results.current_organic_flow, opt_results.best_organic_flow),
+                                ('Input Copper',    opt_results.actual_input_copper,  opt_results.opt_input_copper),
+                                ('Output Copper',   opt_results.actual_output_copper, opt_results.opt_output_copper),
+                                ('Extraction %',    opt_results.actual_extraction_pct, opt_results.opt_extraction_pct),
+                                ('Copper Loss',     opt_results.actual_loss, opt_results.opt_loss),
+                            ] %}
+                            {% for name, cur, opt_val in rows %}
+                            {% set diff = opt_val - cur %}
+                            <tr>
+                                <td class="metric-name">
+                                    {{ name }}
+                                    {% if name == 'Aqueous Flow' and opt_results.mode == 'organic_only' %}
+                                    <span class="fixed-pill">FIXED</span>
+                                    {% elif name == 'Input Copper' and opt_results.mode == 'organic_only' %}
+                                    <span class="fixed-pill">CONST</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="metric-val {% if name == 'Extraction %' %}highlight{% elif name == 'Copper Loss' %}danger{% endif %}">
+                                        {{ "%.4f"|format(opt_val) }}{% if name == 'Extraction %' %} %{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set is_loss = (name == 'Copper Loss') %}
+                                    {% if diff > 0.0001 %}
+                                        <span class="diff {% if is_loss %}down{% else %}up{% endif %}">+{{ "%.4f"|format(diff) }}</span>
+                                    {% elif diff < -0.0001 %}
+                                        <span class="diff {% if is_loss %}up{% else %}down{% endif %}">{{ "%.4f"|format(diff) }}</span>
+                                    {% else %}
+                                        <span class="diff neutral">&#177;0</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div><!-- /results-grid -->
+
+            <!-- Row 2: Revenue Panel (full width) -->
+            <div class="results-grid-full">
+                <div class="res-panel gold-accent">
+                    <div class="res-panel-title">
+                        <div class="rdot" style="color:var(--accent-gold);background:var(--accent-gold);"></div>
+                        <span class="rtitle">&#128293; Revenue Analysis</span>
+                        <span style="margin-left:auto;font-size:10px;color:var(--text-dim);">
+                            @ ${{ "{:,.0f}".format(opt_results.copper_price) }} / ton
+                        </span>
+                    </div>
+
+                    <div class="revenue-highlight">
+                        <div class="rev-stat current">
+                            <div class="rlabel">Current Revenue</div>
+                            <div class="rvalue">${{ "{:,.2f}".format(opt_results.current_revenue) }}</div>
+                        </div>
+                        <div class="rev-stat optimised">
+                            <div class="rlabel">Optimised Revenue</div>
+                            <div class="rvalue">${{ "{:,.2f}".format(opt_results.optimised_revenue) }}</div>
+                        </div>
+                        <div class="rev-stat change {% if opt_results.revenue_change < 0 %}negative{% endif %}">
+                            <div class="rlabel">Revenue Change</div>
+                            <div class="rvalue">
+                                {% if opt_results.revenue_change >= 0 %}+{% endif %}${{ "{:,.2f}".format(opt_results.revenue_change) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <table class="metric-table">
+                        <thead>
+                            <tr><th>Metric</th><th>Current</th><th>Optimised</th><th>Change</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="metric-name">Copper Price / ton</td>
+                                <td><span class="metric-val gold">${{ "{:,.2f}".format(opt_results.copper_price) }}</span></td>
+                                <td><span class="metric-val gold">${{ "{:,.2f}".format(opt_results.copper_price) }}</span></td>
+                                <td><span class="diff neutral">&#177;0</span></td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Output Copper</td>
+                                <td><span class="metric-val">{{ opt_results.actual_output_copper }}</span></td>
+                                <td><span class="metric-val highlight">{{ opt_results.opt_output_copper }}</span></td>
+                                <td>
+                                    {% set d = opt_results.opt_output_copper - opt_results.actual_output_copper %}
+                                    {% if d > 0.0001 %}<span class="diff up">+{{ "%.4f"|format(d) }}</span>
+                                    {% elif d < -0.0001 %}<span class="diff down">{{ "%.4f"|format(d) }}</span>
+                                    {% else %}<span class="diff neutral">&#177;0</span>{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="metric-name">Revenue</td>
+                                <td><span class="metric-val">${{ "{:,.2f}".format(opt_results.current_revenue) }}</span></td>
+                                <td><span class="metric-val highlight">${{ "{:,.2f}".format(opt_results.optimised_revenue) }}</span></td>
+                                <td>
+                                    {% if opt_results.revenue_change >= 0 %}
+                                    <span class="diff up">+${{ "{:,.2f}".format(opt_results.revenue_change) }}</span>
+                                    {% else %}
+                                    <span class="diff down">-${{ "{:,.2f}".format(opt_results.revenue_change | abs) }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- ── RIGHT — Chart + Optimal Leach Sections ─────────────── -->
+    <div class="col-right">
+
+        <div class="panel-box">
+            <div class="panel-title">
+                <div class="pdot" style="background:var(--accent-gold);box-shadow:0 0 7px var(--accent-gold);"></div>
+                <span class="ptitle">Extraction Trend</span>
+                <span class="ptag">LIVE CHART</span>
+            </div>
+            <div class="chart-body">
+                <div class="chart-wrap">
+                    <div class="chart-ph" id="chart-ph">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3d6878" stroke-width="1.5">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        Run a prediction to see<br>the extraction trend graph.
+                    </div>
+                    <canvas id="eff-chart" style="display:none;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optimal Leach Sections -->
+        <div class="panel-box">
+            <div class="panel-title">
+                <div class="pdot" style="background:var(--accent-green);box-shadow:0 0 7px var(--accent-green);"></div>
+                <span class="ptitle">Optimal Leach Sections</span>
+                <span class="ptag" id="leach-badge">AWAITING DATA</span>
+            </div>
+
+            <div class="leach-ph" id="leach-ph">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3d6878" stroke-width="1.5">
+                    <path d="M12 2v6m0 8v6M4.93 4.93l4.24 4.24m5.66 5.66 4.24 4.24M2 12h6m8 0h6M4.93 19.07l4.24-4.24m5.66-5.66 4.24-4.24"/>
+                </svg>
+                Run a prediction to compute<br>optimal <strong>Sec-1</strong> &amp; <strong>Sec-2</strong> leach flow splits.
+            </div>
+
+            <div id="leach-content" style="display:none;">
+                <div class="leach-kpi-row">
+                    <div class="leach-kpi-cell" data-sec="S1">
+                        <div class="lkpi-label">Leach Sec-1</div>
+                        <div class="lkpi-value" id="lkpi-sec1">—</div>
+                        <div class="lkpi-unit">L / min</div>
+                    </div>
+                    <div class="leach-kpi-cell" data-sec="S2">
+                        <div class="lkpi-label">Leach Sec-2</div>
+                        <div class="lkpi-value" id="lkpi-sec2">—</div>
+                        <div class="lkpi-unit">L / min</div>
+                    </div>
+                </div>
+
+                <div class="leach-split-section">
+                    <div class="split-label-row">
+                        <span class="split-lbl">Sec-1 share of Aqueous Flow</span>
+                        <span class="split-pct" id="split-pct-s1">—%</span>
+                    </div>
+                    <div class="split-track"><div class="split-fill s1" id="split-bar-s1" style="width:0%"></div></div>
+                    <div class="split-label-row">
+                        <span class="split-lbl">Sec-2 share of Aqueous Flow</span>
+                        <span class="split-pct" id="split-pct-s2">—%</span>
+                    </div>
+                    <div class="split-track"><div class="split-fill s2" id="split-bar-s2" style="width:0%"></div></div>
+                </div>
+
+                <table class="leach-compare">
+                    <thead>
+                        <tr><th>Parameter</th><th>Original</th><th>Optimal</th><th>&#916; Change</th></tr>
+                    </thead>
+                    <tbody id="leach-compare-body"></tbody>
+                </table>
+
+                <div class="leach-footer" id="leach-footer-note"></div>
+            </div>
+        </div>
+
+    </div>
+
+</div><!-- /dashboard -->
+
+<script>
+/* ── 1. CURSOR GLOW ─────────────────────────────────────────────── */
+(function initCursorGlow() {
+    const wrapper = document.getElementById('form-wrapper');
+    const glow    = document.getElementById('cursor-glow');
+    let fadeTimer = null;
+    wrapper.addEventListener('mousemove', function(e) {
+        const rect = wrapper.getBoundingClientRect();
+        glow.style.left    = (e.clientX - rect.left) + 'px';
+        glow.style.top     = (e.clientY - rect.top)  + 'px';
+        glow.style.opacity = '1';
+        clearTimeout(fadeTimer);
+        fadeTimer = setTimeout(() => { glow.style.opacity = '0'; }, 950);
+    });
+    wrapper.addEventListener('mouseleave', function() {
+        clearTimeout(fadeTimer);
+        glow.style.opacity = '0';
+    });
+})();
+
+/* ── 2. SPINNER ──────────────────────────────────────────────────── */
+function showSpinner() {
+    document.getElementById('spinner').style.display = 'block';
+    const btn = document.querySelector('button[type="submit"]');
+    btn.disabled    = true;
+    btn.textContent = 'Running…';
+}
+
+/* ── 3. HISTORY STATE (sessionStorage) ──────────────────────────── */
+const HIST_KEY    = 'sx_run_history';
+const PENDING_KEY = 'sx_pending_params';
+let runHistory = [];
+try {
+    const s = sessionStorage.getItem(HIST_KEY);
+    if (s) runHistory = JSON.parse(s);
+} catch(e) { runHistory = []; }
+
+function saveHistory() {
+    try { sessionStorage.setItem(HIST_KEY, JSON.stringify(runHistory)); } catch(e) {}
+}
+
+/* ── 4. CHART ────────────────────────────────────────────────────── */
+let chart = null;
+
+function buildChart() {
+    const ctx = document.getElementById('eff-chart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Baseline Extraction %',
+                    data: [],
+                    borderColor: '#00ffaa',
+                    backgroundColor: 'rgba(0,255,170,0.07)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#00ffaa',
+                    pointBorderColor: '#00c8ff',
+                    pointBorderWidth: 1.5,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: true,
+                    tension: 0.38
+                },
+                {
+                    label: 'Optimised Extraction %',
+                    data: [],
+                    borderColor: '#f0a500',
+                    backgroundColor: 'rgba(240,165,0,0.06)',
+                    borderWidth: 2.5,
+                    borderDash: [5, 4],
+                    pointBackgroundColor: '#f0a500',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1.5,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: false,
+                    tension: 0.38
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#7ab8cc',
+                        font: { family: 'Segoe UI', size: 11 },
+                        usePointStyle: true,
+                        pointStyleWidth: 8,
+                        padding: 14
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(13,30,46,0.96)',
+                    titleColor: '#00c8ff',
+                    bodyColor:  '#e8f4f8',
+                    borderColor: 'rgba(0,180,255,0.2)',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: ctx => '  ' + ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(4) + '%'
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#3d6878', font: { family: 'Segoe UI', size: 10 } },
+                    grid:  { color: 'rgba(0,180,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#3d6878', font: { family: 'Segoe UI', size: 10 } },
+                    grid:  { color: 'rgba(0,180,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+function refreshChart() {
+    const successful = runHistory.filter(r => r.value !== null);
+    if (!successful.length) return;
+    document.getElementById('chart-ph').style.display  = 'none';
+    document.getElementById('eff-chart').style.display = 'block';
+    if (!chart) buildChart();
+    chart.data.labels           = successful.map((_, i) => 'Run ' + (i + 1));
+    chart.data.datasets[0].data = successful.map(r => r.value);
+    chart.data.datasets[1].data = successful.map(r => r.optValue !== undefined ? r.optValue : null);
+    chart.update();
+}
+
+/* ── 5. OPTIMAL LEACH SECTIONS PANEL ────────────────────────────── */
+function renderLeachPanel(params, bestAq) {
+    const origSec1 = parseFloat(params.leach_solution_sec1) || 0;
+    const origSec2 = parseFloat(params.leach_solution_sec2) || 0;
+    const total    = origSec1 + origSec2;
+
+    const ratioSec1 = total !== 0 ? origSec1 / total : 0.5;
+    const ratioSec2 = total !== 0 ? origSec2 / total : 0.5;
+
+    const optSec1   = bestAq * ratioSec1;
+    const optSec2   = bestAq * ratioSec2;
+
+    const pct1 = (ratioSec1 * 100).toFixed(1);
+    const pct2 = (ratioSec2 * 100).toFixed(1);
+
+    const deltaSec1 = optSec1 - origSec1;
+    const deltaSec2 = optSec2 - origSec2;
+
+    document.getElementById('lkpi-sec1').textContent = optSec1.toFixed(2);
+    document.getElementById('lkpi-sec2').textContent = optSec2.toFixed(2);
+
+    document.getElementById('split-pct-s1').textContent = pct1 + '%';
+    document.getElementById('split-pct-s2').textContent = pct2 + '%';
+    requestAnimationFrame(() => {
+        document.getElementById('split-bar-s1').style.width = pct1 + '%';
+        document.getElementById('split-bar-s2').style.width = pct2 + '%';
+    });
+
+    function deltaClass(d) { return d > 0.5 ? 'up' : d < -0.5 ? 'down' : 'flat'; }
+    function deltaStr(d)   { return (d >= 0 ? '+' : '') + d.toFixed(2); }
+
+    const rows = [
+        { name: 'Leach Sec-1',    orig: origSec1, opt: optSec1, delta: deltaSec1 },
+        { name: 'Leach Sec-2',    orig: origSec2, opt: optSec2, delta: deltaSec2 },
+        { name: 'Aq. Flow (sum)', orig: total,    opt: optSec1 + optSec2, delta: (optSec1 + optSec2) - total },
+    ];
+
+    let tbody = '';
+    rows.forEach(r => {
+        tbody += `<tr>
+            <td class="lc-name">${r.name}</td>
+            <td class="lc-orig">${r.orig.toFixed(2)}</td>
+            <td class="lc-opt">${r.opt.toFixed(2)}</td>
+            <td><span class="lc-delta ${deltaClass(r.delta)}">${deltaStr(r.delta)}</span></td>
+        </tr>`;
+    });
+    document.getElementById('leach-compare-body').innerHTML = tbody;
+
+    const sumCheck = (optSec1 + optSec2).toFixed(2);
+    document.getElementById('leach-footer-note').innerHTML =
+        `<strong>Verification:</strong> Sec-1 + Sec-2 = <span style="color:var(--accent-cyan)">${sumCheck} L/min</span>
+         — must equal Optimal Aqueous Flow <span style="color:var(--accent-cyan)">${bestAq.toFixed(2)} L/min</span>.
+         Split ratio maintained from original <strong>${pct1}% / ${pct2}%</strong>.`;
+
+    document.getElementById('leach-badge').textContent = 'COMPUTED';
+    document.getElementById('leach-ph').style.display      = 'none';
+    document.getElementById('leach-content').style.display = 'block';
+}
+
+/* ── 6. HISTORY CARD RENDERER ───────────────────────────────────── */
+const PARAM_LABELS = [
+    ['leach_solution_sec1',        'LS Sec-1'],
+    ['leach_solution_sec2',        'LS Sec-2'],
+    ['leach_acidity',              'Leach Acid'],
+    ['leach_ph',                   'Leach pH'],
+    ['leach_fe',                   'Leach Fe'],
+    ['leach_cu',                   'Leach Cu'],
+    ['lean_cu_conc',               'Lean Cu'],
+    ['lean_fe_conc',               'Lean Fe'],
+    ['lean_h2so4',                 'Lean H\u2082SO\u2084'],
+    ['lean_flow',                  'Lean Flow'],
+    ['aqueous_flow',               'Aq. Flow'],
+    ['organic_flow',               'Org. Flow'],
+    ['solvent_to_leach_flow_ratio','S/L Ratio'],
+    ['phase_engagement_time',      'Engage. T'],
+];
+
+function makeHistCard(entry, globalIndex) {
+    const runNum = globalIndex + 1;
+    const isErr  = entry.value === null;
+    const mode   = entry.mode || 'full';
+    const modeLbl = mode === 'organic_only' ? 'Organic Only' : 'Full Optimise';
+    const pHtml  = PARAM_LABELS.map(([k, lbl]) => {
+        const v = entry.params[k] !== undefined ? parseFloat(entry.params[k]).toFixed(3) : '\u2014';
+        return `<div class="hist-p"><b>${lbl}:</b> ${v}</div>`;
+    }).join('');
+    return `<div class="hist-card">
+        <div class="hist-card-top">
+            <span class="hist-run">Run #${runNum}</span>
+            <span class="hist-time">${entry.time}</span>
+        </div>
+        <div class="hist-value ${isErr ? 'err' : ''}">
+            ${isErr ? 'Prediction Error' : (entry.extractionPct !== null ? 'Ext: ' + entry.extractionPct + '%' : entry.result)}
+        </div>
+        <div><span class="hist-mode-badge ${mode === 'organic_only' ? 'organic' : 'full'}">${modeLbl}</span></div>
+        ${entry.revenue ? `<div class="hist-p" style="font-size:11px;color:var(--accent-gold);margin-bottom:6px;">Rev: $${Number(entry.revenue).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>` : ''}
+        <div class="hist-params">${pHtml}</div>
+    </div>`;
+}
+
+function refreshHistory() {
+    const body  = document.getElementById('history-body');
+    const count = document.getElementById('run-count');
+    count.textContent = runHistory.length + ' RUN' + (runHistory.length !== 1 ? 'S' : '');
+    if (!runHistory.length) {
+        body.innerHTML = '<div class="hist-empty">No predictions yet.<br>Fill in the form and click<br><em>"Run Prediction"</em> to begin.</div>';
+        return;
+    }
+    let html = '';
+    for (let i = runHistory.length - 1; i >= 0; i--) {
+        html += makeHistCard(runHistory[i], i);
+    }
+    body.innerHTML = html;
+}
+
+/* ── 7. CAPTURE PARAMS BEFORE SUBMIT ───────────────────────────── */
+document.getElementById('predForm').addEventListener('submit', function() {
+    const params = {};
+    this.querySelectorAll('input[type="number"]').forEach(inp => {
+        params[inp.name] = inp.value;
+    });
+    // capture mode
+    const modeEl = this.querySelector('input[name="opt_mode"]:checked');
+    params['opt_mode'] = modeEl ? modeEl.value : 'full';
+    try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(params)); } catch(e) {}
+});
+
+/* ── 8. ON PAGE LOAD ────────────────────────────────────────────── */
+(function onPageLoad() {
+    let extractionPct    = null;
+    let optExtractionPct = null;
+    let bestAqueousFlow  = null;
+    let optimisedRevenue = null;
+    let runMode          = 'full';
+
+    {% if show_results %}
+    extractionPct    = {{ initial_preds.get('extraction_percentage', 'null') }};
+    optExtractionPct = {{ opt_results.opt_extraction_pct if opt_results else 'null' }};
+    bestAqueousFlow  = {{ opt_results.best_aqueous_flow if opt_results else 'null' }};
+    optimisedRevenue = {{ opt_results.optimised_revenue if opt_results else 'null' }};
+    runMode          = '{{ opt_results.mode if opt_results else "full" }}';
+    {% endif %}
+
+    const pendingRaw = sessionStorage.getItem(PENDING_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+
+    if (pendingRaw) {
+        try {
+            const params = JSON.parse(pendingRaw);
+            const now    = new Date();
+            const timeStr = [now.getHours(), now.getMinutes(), now.getSeconds()]
+                .map(n => String(n).padStart(2, '0')).join(':');
+            runHistory.push({
+                result:          extractionPct !== null ? 'Extraction: ' + extractionPct + '%' : 'Error',
+                value:           extractionPct,
+                optValue:        optExtractionPct,
+                extractionPct:   extractionPct,
+                bestAqueousFlow: bestAqueousFlow,
+                revenue:         optimisedRevenue,
+                mode:            params['opt_mode'] || 'full',
+                params,
+                time:            timeStr,
+            });
+            saveHistory();
+        } catch(e) {}
+    }
+
+    refreshHistory();
+    refreshChart();
+
+    /* Render leach panel from last successful run */
+    const lastRun = runHistory.length ? runHistory[runHistory.length - 1] : null;
+    if (lastRun && lastRun.params && lastRun.bestAqueousFlow !== null && lastRun.bestAqueousFlow !== undefined) {
+        renderLeachPanel(lastRun.params, lastRun.bestAqueousFlow);
+    }
+
+    {% if show_results %}
+    document.querySelectorAll('#predForm input[type="number"]').forEach(inp => {
+        inp.value = '';
+    });
+    const el = document.querySelector('.results-section');
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    {% endif %}
+})();
+</script>
+
+</body>
+</html>
